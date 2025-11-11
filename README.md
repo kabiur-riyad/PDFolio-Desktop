@@ -22,7 +22,7 @@ A minimalist desktop application for creating beautiful, print-ready photography
 -   🚀 **Fast Start**: Remembers and auto-opens the last portfolio file you worked on.
 
 
-## Download & Installation (Recommended)
+## Download & Run (Recommended)
 
 The easiest way to get started is to download the latest pre-compiled version for your operating system.
 
@@ -99,6 +99,7 @@ After the build process is complete, you will find the installer and application
 ## License
 
 MIT
+
 
 
 
