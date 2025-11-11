@@ -1,0 +1,92 @@
+:root{--page-paper:#ffffff;--page-text:#0b0b0b;--page-muted:#6f6f6f;--page-font-family:'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;--page-body-font-size:14px}
+.page{width:210mm; height:297mm; background:var(--page-paper); margin:16px auto; box-shadow:0 6px 18px rgba(15,15,15,0.08); padding:18mm 20mm; box-sizing:border-box; position:relative; overflow:hidden; font-family:var(--page-font-family)}
+
+/* Cover */
+.cover{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;padding:30mm 20mm;background:var(--page-paper)}
+.cover .label{position:absolute;top:22mm;left:20mm;font-size:18px;color:var(--page-text);font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.cover h1{font-family:inherit;font-size:64px;line-height:0.95;font-weight:800;letter-spacing:-0.5px;margin:0;color:var(--page-text)}
+.cover h2{font-size:16px;color:var(--page-muted);margin:10px 0 18px;font-weight:600;text-align:left;font-family:inherit}
+.cover .meta{font-size:var(--page-body-font-size);max-width:520px;line-height:1.6;color:var(--page-muted);margin-bottom:28px;text-align:left;font-family:inherit}
+.cover .links{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left}
+.cover .social{display:flex;align-items:center;gap:10px}
+.cover .icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:#fff}
+.cover .icon svg{width:22px;height:22px;fill:var(--page-text);opacity:0.95}
+.cover a{color:var(--page-text);text-decoration:none;font-size:15px}
+.cover .username a{font-weight:700;color:var(--page-text);text-decoration:none;transition:opacity 0.2s ease}
+.cover .username a:hover{opacity:0.6}
+
+/* Fixed meta for singles and series images */
+.fixed-meta{position:absolute; left:20mm; bottom:18mm; width:170mm; box-sizing:border-box; z-index:3}
+.fixed-meta .title{font-size:18px;font-weight:700;color:var(--page-text)}
+.fixed-meta .year{color:var(--page-muted);font-size:12px;margin-top:4px}
+.fixed-meta .desc{margin-top:8px;color:var(--page-muted);font-size:var(--page-body-font-size);line-height:1.5}
+.fixed-meta .desc:empty {
+  display: none;
+  min-height: 1em; /* So it's clickable when it appears */
+}
+.page.single:hover .fixed-meta .desc:empty,
+.page.series-image:hover .fixed-meta .desc:empty {
+  display: block;
+}
+.page.single:hover .fixed-meta .desc:empty::before,
+.page.series-image:hover .fixed-meta .desc:empty::before {
+  content: 'Double-click to add a description...';
+  color: var(--page-muted);
+  font-style: italic;
+  cursor: text;
+}
+
+/* Bottom-right year (aligned vertically with title line) */
+.fixed-year{position:absolute; right:20mm; bottom:18mm; font-size:12px; color:var(--page-muted); z-index:3}
+.fixed-year:empty{min-width: 2ch; min-height: 1em; display:inline-block}
+
+/* Image wrapper */
+.image-wrap{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:160mm; height:160mm; display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:1}
+.image-wrap img{max-width:100%; max-height:100%; object-fit:contain; display:block; margin:auto}
+.image-wrap .placeholder{color:var(--page-muted); text-align:center; font-size:14px}
+.image-wrap.drag{box-shadow:inset 0 0 0 3px var(--accent)}
+
+/* Series intro */
+.series-cover{display:flex;flex-direction:column;justify-content:center;padding:30mm 20mm;text-align:left}
+.series-cover .series-header .title{font-size:36px;font-weight:900;letter-spacing:-0.5px;color:var(--page-text);margin-bottom:6px}
+.series-cover .series-header .meta{font-size:12px;color:var(--page-muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:18px}
+.series-cover .series-desc{font-size:var(--page-body-font-size);color:var(--page-text);line-height:1.7;white-space:pre-line;max-width:150mm}
+.series-cover .series-info{margin-top:20px;font-size:13px;color:var(--page-muted)}
+
+  .series-tag{position:absolute; top:20mm; left:20mm; font-size:11px; color:var(--page-muted); text-transform:uppercase; letter-spacing:1px}
+
+/* Classic preset adjustments */
+body[data-theme-preset="classic"] .cover {
+  align-items: center;
+  text-align: center;
+}
+body[data-theme-preset="classic"] .cover .label,
+body[data-theme-preset="classic"] .cover .meta,
+body[data-theme-preset="classic"] .cover .links,
+body[data-theme-preset="classic"] .cover .social,
+body[data-theme-preset="classic"] .cover .username,
+body[data-theme-preset="classic"] .cover .email {
+  text-align: center;
+  align-items: center;
+}
+body[data-theme-preset="classic"] .cover .links {
+  align-items: center;
+}
+body[data-theme-preset="classic"] .cover .social {
+  justify-content: center;
+}
+
+
+@media print{
+  .page{box-shadow:none; margin:0; page-break-after:always}
+  @page{size:A4 portrait; margin:0}
+}
+
+/* editable focus styles */
+[contenteditable]{outline:none}
+[contenteditable]:focus{box-shadow:0 0 0 2px rgba(0,0,0,0.06); border-radius:4px}
+
+/* Dark UI subtle page edge (keeps page visible on dark themes) */
+body[data-ui-theme="dark"] .page{
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.09), 0 6px 18px rgba(0,0,0,0.6);
+}

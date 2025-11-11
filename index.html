@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
+  <title>PDFolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="./ui.css">
+ <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <!-- User Info Modal -->
+  <div id="userInfoModal" class="modal">
+    <div class="modal-content">
+      <h2>Welcome to PDFolio</h2>
+      <p style="margin-bottom:20px;color:var(--muted)">Please provide your information to get started.</p>
+      <form id="userInfoForm">
+        <fieldset class="form-style-preset">
+          <legend>Portfolio style</legend>
+          <div class="style-choice">
+            <label class="style-choice-option">
+              <input type="radio" id="stylePresetDefault" name="stylePreset" value="default" checked>
+              <span class="style-choice-pill">Default</span>
+            </label>
+            <label class="style-choice-option">
+              <input type="radio" id="stylePresetDefaultDark" name="stylePreset" value="default-dark">
+              <span class="style-choice-pill">Default (Dark)</span>
+            </label>
+            <label class="style-choice-option">
+              <input type="radio" id="stylePresetClassic" name="stylePreset" value="classic">
+              <span class="style-choice-pill">Classic</span>
+            </label>
+          </div>
+        </fieldset>
+        <label for="userName">Your Name *</label>
+        <input type="text" id="userName" required placeholder="Alex Webb">
+        
+        <label for="userYears">Years (e.g., 2022–2025)</label>
+        <input type="text" id="userYears" placeholder="2022–2025">
+        
+        <label for="userStatement">Artist Statement / Bio</label>
+        <textarea id="userStatement" placeholder="Tell us about yourself and your work..."></textarea>
+        
+        <label for="userInstagram">Instagram URL</label>
+        <input type="url" id="userInstagram" placeholder="https://www.instagram.com/yourname/">
+        
+        <label for="userUsername">Instagram Username</label>
+        <input type="text" id="userUsername" placeholder="@yourname">
+        
+        <label for="userEmail">Email</label>
+        <input type="email" id="userEmail" placeholder="your.email@example.com">
+        
+        <div class="buttons">
+          <button type="submit" class="btn">Save & Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Preferences Modal -->
+  <div id="preferencesModal" class="modal">
+    <div class="modal-content">
+      <h2>Preferences</h2>
+      <label><input type="checkbox" id="prefUiDark"> Enable Dark Mode</label>
+      <label><input type="checkbox" id="prefAutosave"> Enable Autosave</label>
+      <div class="buttons">
+        <button type="button" id="cancelPrefsBtn" class="btn secondary">Cancel</button>
+        <button type="button" id="savePrefsBtn" class="btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+<!-- First Run Modal -->
+<div id="firstRunModal" class="modal">
+  <div class="modal-content">
+    <h2>Get started</h2>
+    <p class="small" style="margin-bottom:16px;color:var(--muted)">Create a new portfolio or open an existing one.</p>
+    <div class="buttons" style="display:flex;gap:8px;justify-content:flex-end">
+      <button type="button" id="openPortfolioBtn" class="btn secondary">Open…</button>
+      <button type="button" id="createPortfolioBtn" class="btn">Create New</button>
+    </div>
+  </div>
+  </div>
+
+  <!-- Add Project Modal -->
+  <div id="projectModal" class="modal">
+    <div class="modal-content">
+      <h2>Add New Project</h2>
+      <form id="projectForm">
+        <label for="projectTitle">Project Title *</label>
+        <input type="text" id="projectTitle" required placeholder="My Photography Project">
+        
+        <label for="projectYear">Year</label>
+        <input type="text" id="projectYear" placeholder="2025">
+        
+        <label for="projectDescription">Project Description</label>
+        <textarea id="projectDescription" placeholder="Describe your project..."></textarea>
+        
+        <label for="projectImages">Number of Images *</label>
+        <input type="number" id="projectImages" required min="1" value="3" placeholder="3">
+        
+        <div class="buttons">
+          <button type="button" id="cancelProjectBtn" class="btn secondary">Cancel</button>
+          <button type="submit" class="btn">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Theme / Color Settings Modal -->
+  <div id="themeModal" class="modal">
+    <div class="modal-content">
+      <h2>Style</h2>
+      <div class="style-modal">
+        <div class="style-preset-bar">
+          <div>
+            <div class="style-section-title">Style preset</div>
+            <div id="stylePresetSummary" class="style-section-subtitle small">Default</div>
+          </div>
+          <select id="stylePresetSelect" class="style-select" aria-label="Select style preset">
+            <option value="default">Default</option>
+            <option value="default-dark">Default (Dark)</option>
+            <option value="classic">Classic</option>
+          </select>
+        </div>
+        <div class="style-tabs">
+          <button type="button" id="choosePageColor" class="btn secondary" data-target="paper">Page</button>
+          <button type="button" id="chooseTextColor" class="btn secondary" data-target="text">Text</button>
+          <button type="button" id="chooseMutedColor" class="btn secondary" data-target="muted">Secondary Text</button>
+        </div>
+
+        <section class="style-section" id="colorSection">
+          <div class="style-section-header">
+            <div>
+              <div class="style-section-title">Color</div>
+              <div id="styleTargetLabel" class="style-section-subtitle small">Editing: Page</div>
+            </div>
+            <button type="button" id="resetColorBtn" class="reset-icon" aria-label="Reset color" title="Reset color">
+              <svg id="resetIconSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 2v6h6"/>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8"/>
+              </svg>
+            </button>
+          </div>
+          <div id="colorEditor" class="style-grid style-grid--color">
+            <div class="style-field style-field--swatch">
+              <label for="colorPicker" class="small">Swatch</label>
+              <input id="colorPicker" type="color" />
+            </div>
+            <div class="style-field">
+              <label for="hexInput" class="small">Hex value</label>
+              <input id="hexInput" type="text" placeholder="#RRGGBB" />
+            </div>
+          </div>
+        </section>
+
+        <section class="style-section" id="typographyEditor" hidden>
+          <div class="style-section-header">
+            <div class="style-section-title">Typography</div>
+            <button type="button" id="resetTypographyBtn" class="reset-icon" aria-label="Reset typography" title="Reset typography">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 2v6h6"/>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L3 8"/>
+              </svg>
+            </button>
+          </div>
+          <div class="style-grid style-grid--typography">
+            <div class="style-field">
+              <label for="fontFamilySelect" class="small">Font</label>
+              <select id="fontFamilySelect">
+                <option value="Manrope, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial">Manrope</option>
+                <option value="Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial">Inter</option>
+                <option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option>
+                <option value="Arial, Helvetica, sans-serif">Arial</option>
+                <option value="Georgia, 'Times New Roman', Times, serif">Georgia</option>
+                <option value="Garamond, 'Times New Roman', Times, serif">Garamond</option>
+                <option value="Times, 'Times New Roman', serif">Times</option>
+                <option value="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial">System UI</option>
+              </select>
+            </div>
+            <div class="style-field">
+              <label for="fontSizeInput" class="small">Size (px)</label>
+              <input id="fontSizeInput" type="number" min="8" max="32" step="1" placeholder="14" />
+            </div>
+          </div>
+        </section>
+
+        <div class="buttons style-actions">
+          <button type="button" id="cancelThemeBtn" class="btn secondary">Cancel</button>
+          <button type="button" id="saveThemeBtn" class="btn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="main-container">
+    <aside id="controls">
+      <div id="dropzone" class="dropzone">
+        <div>
+          <strong>Drag & drop images here</strong>
+          <div class="small">or click to select files</div>
+        </div>
+        <input id="fileInput" type="file" accept="image/*" multiple style="display:none" />
+      </div>
+      <button id="addProjectBtn" class="btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6Z"/></svg>
+        <span>Add Project</span>
+      </button>
+      <button id="printBtn" class="btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2Zm14-9h-4V3H9v8H5l7 7l7-7Z"/></svg>
+        <span>Export as PDF</span>
+      </button>
+      <button id="quickSaveBtn" class="btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4Zm0 2.5L18.5 7H17V5.5ZM7 5h8v6H7V5Zm10 14H5v-6h12v6Z"/></svg>
+        <span>Save</span>
+      </button>
+      <button id="themeBtn" class="btn secondary">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 7.07 17.07a1.5 1.5 0 0 0-1.06-2.56H16a2 2 0 0 1-2-2v-2a4 4 0 0 0-4-4H7.5A1.5 1.5 0 0 1 6.44 6.5A10 10 0 0 1 12 2Z"/></svg>
+        <span>Style</span>
+      </button>
+
+      <h3 class="sidebar-heading">Pages</h3>
+      <div class="pages-list" id="pagesList"></div>
+
+      <div class="instructions">
+        <h3 style="margin-bottom:8px">Instructions</h3>
+        <p class="small">• Drag an image to the dropzone to create a single image page.</p>
+        <p class="small">• Click "Add Project" to create a project with multiple images.</p>
+        <p class="small">• Drop images directly onto pages to assign them.</p>
+        <p class="small">• Double-click any text to edit inline.</p>
+        <p class="small">• Use arrows to reorder pages.</p>
+        <p class="small">• Use the Save icon or File→Save to save your portfolio JSON.</p>
+        <p class="small">• Click "Export as PDF" to export a PDF of your portfolio.</p>
+      </div>
+    </aside>
+
+    <main id="content">
+      <div id="canvas"></div>
+      <footer>PDFolio</footer>
+    </main>
+  </div>
+  
+  <!-- Zoom control -->
+  <div id="zoomControl" class="zoom-control" aria-label="Zoom control">
+    <input id="zoomSlider" type="range" min="50" max="100" step="5" value="100" />
+    <span id="zoomValue" class="small">100%</span>
+  </div>
+
+  <script type="module" src="index.js" defer></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
