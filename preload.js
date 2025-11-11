@@ -16,5 +16,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuNew: (callback) => ipcRenderer.on('menu-new', () => callback()),
   onMenuPreferences: (callback) => ipcRenderer.on('menu-preferences', () => callback()),
   onMenuExportPdf: (callback) => ipcRenderer.on('menu-export-pdf', () => callback()),
-  setNativeTheme: (source) => ipcRenderer.invoke('set-native-theme', source)
+  setNativeTheme: (source) => ipcRenderer.invoke('set-native-theme', source),
+  savePdfDirect: (data, defaultPath) => ipcRenderer.invoke('save-pdf-direct', { data, defaultPath })
 });

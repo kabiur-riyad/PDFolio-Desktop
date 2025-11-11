@@ -1128,22 +1128,19 @@ function parseYearFromExifDate(s) {
   return m ? m[1] : null;
 }
 
-// Export PDF
+// Export PDF: use Electron's printToPDF only (avoid OS printers)
 async function exportPortfolioAsPDF() {
-  if (window.electronAPI && window.electronAPI.exportPDF) {
-    try {
-      const result = await window.electronAPI.exportPDF();
-      if (result.success) {
-        alert(`PDF saved successfully to ${result.filePath}`);
-      } else if (!result.canceled) {
-        alert(`Error saving PDF: ${result.error}`);
-      }
-    } catch (err) {
-      console.error('Error exporting PDF:', err);
-      alert('Error exporting PDF. Please try again.');
-    }
-  } else {
-    window.print();
+  if (!window.electronAPI || !window.electronAPI.exportPDF) {
+    alert('PDF export is unavailable in this build.');
+    return;
+  }
+  try {
+    const res = await window.electronAPI.exportPDF();
+    if (!res) return;
+    if (res.success || res.canceled) return;
+    if (res.error) alert('PDF export failed: ' + res.error);
+  } catch (e) {
+    alert('PDF export failed.');
   }
 }
 

@@ -5,6 +5,25 @@ const fsSync = require('fs');
 
 let mainWindow;
 const userDataPath = path.join(app.getPath('userData'), 'user-info.json');
+const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+let settings = { lastPdfDir: null };
+
+function loadSettings() {
+  try {
+    if (fsSync.existsSync(settingsPath)) {
+      const raw = fsSync.readFileSync(settingsPath, 'utf8');
+      const obj = JSON.parse(raw);
+      settings = { ...settings, ...(obj || {}) };
+    }
+  } catch {}
+}
+
+function saveSettings() {
+  try {
+    fsSync.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fsSync.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+  } catch {}
+}
 let isDirty = false;
 let waitingForSaveBeforeExit = false;
 let quittingAfterSave = false;
@@ -247,6 +266,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  loadSettings();
   console.log('App is ready, creating window...');
   console.log('Current directory:', __dirname);
   console.log('Index.html path:', path.join(__dirname, 'index.html'));
@@ -325,9 +345,11 @@ function promptBeforeNew() {
 // Handle PDF export
 ipcMain.handle('export-pdf', async (event, options) => {
   try {
+    const baseDir = (settings && settings.lastPdfDir && fsSync.existsSync(settings.lastPdfDir)) ? settings.lastPdfDir : getAppFolder();
+    const suggested = uniqueDefaultPath(baseDir, 'portfolio.pdf');
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
       title: 'Save PDF',
-      defaultPath: 'portfolio.pdf',
+      defaultPath: suggested,
       filters: [
         { name: 'PDF Files', extensions: ['pdf'] }
       ]
@@ -343,12 +365,47 @@ ipcMain.handle('export-pdf', async (event, options) => {
       printBackground: true,
       printSelectionOnly: false,
       landscape: false,
-      scaleFactor: 100
+      preferCSSPageSize: true
     };
 
     const data = await mainWindow.webContents.printToPDF(pdfOptions);
     await fs.writeFile(filePath, data);
+    try { settings.lastPdfDir = path.dirname(filePath); saveSettings(); } catch {}
 
+    return { success: true, filePath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Save PDF buffer coming from renderer
+ipcMain.handle('save-pdf-direct', async (_event, payload) => {
+  try {
+    const baseDir = (settings && settings.lastPdfDir && fsSync.existsSync(settings.lastPdfDir)) ? settings.lastPdfDir : getAppFolder();
+    const suggested = uniqueDefaultPath(baseDir, (payload && payload.defaultPath) || 'portfolio.pdf');
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Save PDF',
+      defaultPath: suggested,
+      filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+    });
+    if (canceled || !filePath) return { success: false, canceled: true };
+
+    const data = payload && payload.data;
+    let buffer;
+    if (data && data.type === 'Buffer' && Array.isArray(data.data)) {
+      buffer = Buffer.from(data.data);
+    } else if (typeof data === 'string') {
+      buffer = Buffer.from(data, 'base64');
+    } else if (data && (data.byteLength !== undefined)) {
+      buffer = Buffer.from(new Uint8Array(data));
+    } else if (Array.isArray(data)) {
+      buffer = Buffer.from(data);
+    } else {
+      throw new Error('Invalid PDF data');
+    }
+
+    await fs.writeFile(filePath, buffer);
+    try { settings.lastPdfDir = path.dirname(filePath); saveSettings(); } catch {}
     return { success: true, filePath };
   } catch (error) {
     return { success: false, error: error.message };
