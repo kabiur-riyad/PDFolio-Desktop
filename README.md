@@ -1,4 +1,4 @@
-<img width="1024" height="1024" alt="PDFolio" src="https://github.com/user-attachments/assets/de0f3139-6689-4429-8bac-9c4d29d39d78" />
+<img width="256" height="256" alt="PDFolio" src="https://github.com/user-attachments/assets/de0f3139-6689-4429-8bac-9c4d29d39d78" />
 #PDFolio
 
 A minimalist desktop application for creating beautiful, print-ready photography portfolios.
@@ -98,4 +98,5 @@ After the build process is complete, you will find the installer and application
 ## License
 
 MIT
+
 
