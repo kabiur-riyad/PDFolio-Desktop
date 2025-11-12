@@ -24,6 +24,8 @@
   display: none;
   min-height: 1em; /* So it's clickable when it appears */
 }
+.fixed-meta .header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.fixed-meta .header .year{margin-top:0}
 .page.single:hover .fixed-meta .desc:empty,
 .page.series-image:hover .fixed-meta .desc:empty {
   display: block;

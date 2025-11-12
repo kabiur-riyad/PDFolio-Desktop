@@ -1,6 +1,6 @@
 {
   "name": "pdfolio",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "A minimalist PDF photography portfolio builder desktop application",
   "main": "main.js",
   "scripts": {

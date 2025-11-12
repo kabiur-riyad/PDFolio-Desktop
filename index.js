@@ -494,10 +494,12 @@ function renderPages() {
       el.innerHTML = `
         <div class="image-wrap" data-idx="${idx}">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.data.title || 'Image')}"/>` : `<div class="placeholder">Drop image here</div>`}</div>
         <div class="fixed-meta">
-          <div class="title editable">${escapeHtml(p.data.title || 'Untitled')}</div>
+          <div class="header">
+            <div class="title editable">${escapeHtml(p.data.title || 'Untitled')}</div>
+            <div class="year editable">${escapeHtml(p.data.year || '')}</div>
+          </div>
           <div class="desc editable">${escapeHtml(p.data.desc)}</div>
         </div>
-        <div class="fixed-year year editable">${escapeHtml(p.data.year || '')}</div>
       `;
     } else if (p.type === 'series-cover') {
       el.classList.add('series-cover');
@@ -521,10 +523,12 @@ function renderPages() {
         <div class="series-tag">Image ${currentIndexInSeries} of ${p.seriesTotal}</div>
         <div class="image-wrap" data-idx="${idx}">${p.image ? `<img src="${p.image}" alt="${escapeHtml(p.data.title || 'Image')}"/>` : `<div class="placeholder">Drop image for: ${escapeHtml(p.data.title || 'Image ' + currentIndexInSeries)}</div>`}</div>
         <div class="fixed-meta">
-          <div class="title editable">${escapeHtml(p.data.title || 'Image ' + currentIndexInSeries)}</div>
+          <div class="header">
+            <div class="title editable">${escapeHtml(p.data.title || 'Image ' + currentIndexInSeries)}</div>
+            <div class="year editable">${escapeHtml(p.data.year || '')}</div>
+          </div>
           <div class="desc editable">${escapeHtml(p.data.desc || '')}</div>
         </div>
-        <div class="fixed-year year editable">${escapeHtml(p.data.year || '')}</div>
       `;
     }
     canvas.appendChild(el);
