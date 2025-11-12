@@ -30,7 +30,25 @@ The easiest way to get started is to download the latest pre-compiled version fo
 2.  Under the latest release, find the executable for your system (e.g., `PDFolio-vx.x.x.exe` for Windows).
 3.  Download and run.
 
+
+## Preferences
+
+- Open via Edit → Preferences… or Ctrl/Cmd+,
+- Toggle UI Dark Mode and Autosave.
+- If you haven’t set Dark Mode explicitly, the app follows your OS theme automatically.
+
+## Zoom Control
+
+- Use the bottom-right overlay to zoom between 50% and 100%.
+- Snaps in 5% increments and animates smoothly; auto-hides when idle.
+
+## Keyboard Shortcuts
+
+- Export as PDF: Ctrl/Cmd+Shift+E
+- Save: Ctrl/Cmd+S
+- Preferences: Ctrl/Cmd+l
 ---
+
 
 ## For Developers: Building from Source
 
@@ -79,22 +97,6 @@ You can package the application into a distributable format to share with others
 
 After the build process is complete, you will find the installer and application files in the `dist` directory.
 
-## Preferences
-
-- Open via Edit → Preferences… or Ctrl/Cmd+,
-- Toggle UI Dark Mode and Autosave.
-- If you haven’t set Dark Mode explicitly, the app follows your OS theme automatically.
-
-## Zoom Control
-
-- Use the bottom-right overlay to zoom between 50% and 100%.
-- Snaps in 5% increments and animates smoothly; auto-hides when idle.
-
-## Keyboard Shortcuts
-
-- Export as PDF: Ctrl/Cmd+Shift+E
-- Save: Ctrl/Cmd+S
-- Preferences: Ctrl/Cmd+l
 
 
 
