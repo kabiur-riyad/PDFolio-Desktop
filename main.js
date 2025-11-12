@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -6,7 +6,7 @@ const fsSync = require('fs');
 let mainWindow;
 const userDataPath = path.join(app.getPath('userData'), 'user-info.json');
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-let settings = { lastPdfDir: null };
+let settings = { lastPdfDir: null, lastPortfolioDir: null };
 
 function loadSettings() {
   try {
@@ -21,6 +21,21 @@ function loadSettings() {
 function saveSettings() {
   try {
     fsSync.mkdirSync(path.dirname(settingsPath), { recursive: true });
+
+// Provide app version to renderer
+ipcMain.handle('get-app-version', async () => {
+  try {
+    const version = app.getVersion ? app.getVersion() : (require('./package.json').version || 'unknown');
+    return { success: true, version };
+  } catch (error) {
+    try {
+      const pkg = require('./package.json');
+      return { success: true, version: (pkg && pkg.version) ? pkg.version : 'unknown' };
+    } catch (e) {
+      return { success: false, error: String(error && error.message || error) };
+    }
+  }
+});
     fsSync.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
   } catch {}
 }
@@ -72,6 +87,19 @@ ipcMain.handle('set-native-theme', (_event, source) => {
     const allowed = ['system', 'light', 'dark'];
     if (allowed.includes(source)) nativeTheme.themeSource = source;
     return { success: true, themeSource: nativeTheme.themeSource };
+  } catch (error) {
+    return { success: false, error: String(error && error.message || error) };
+  }
+});
+
+// Open external URLs in the system browser
+ipcMain.handle('open-external', async (_event, url) => {
+  try {
+    if (url) {
+      await shell.openExternal(url);
+      return { success: true };
+    }
+    return { success: false, error: 'No URL' };
   } catch (error) {
     return { success: false, error: String(error && error.message || error) };
   }
@@ -415,7 +443,7 @@ ipcMain.handle('save-pdf-direct', async (_event, payload) => {
 // Portfolio file persistence
 ipcMain.handle('create-new-portfolio', async (_event, jsonData) => {
   try {
-    const baseDir = getAppFolder();
+    const baseDir = (settings && settings.lastPortfolioDir && fsSync.existsSync(settings.lastPortfolioDir)) ? settings.lastPortfolioDir : getAppFolder();
     const suggested = uniqueDefaultPath(baseDir, 'Portfolio.json');
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
       title: 'Create Portfolio',
@@ -425,6 +453,7 @@ ipcMain.handle('create-new-portfolio', async (_event, jsonData) => {
     if (canceled || !filePath) return { success: false, canceled: true };
     await fs.writeFile(filePath, jsonData || '{"userInfo":{},"pages":[]}', 'utf8');
     currentPortfolioPath = filePath;
+    try { settings.lastPortfolioDir = path.dirname(filePath); saveSettings(); } catch {}
     return { success: true, filePath };
   } catch (error) {
     return { success: false, error: error.message };
@@ -435,7 +464,7 @@ ipcMain.handle('save-portfolio', async (_event, jsonData) => {
   try {
     let target = currentPortfolioPath;
     if (!target) {
-      const baseDir = getAppFolder();
+      const baseDir = (settings && settings.lastPortfolioDir && fsSync.existsSync(settings.lastPortfolioDir)) ? settings.lastPortfolioDir : getAppFolder();
       const suggested = uniqueDefaultPath(baseDir, 'Portfolio.json');
       const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
         title: 'Save Portfolio',
@@ -447,6 +476,7 @@ ipcMain.handle('save-portfolio', async (_event, jsonData) => {
       currentPortfolioPath = filePath;
     }
     await fs.writeFile(target, jsonData, 'utf8');
+    try { settings.lastPortfolioDir = path.dirname(target); saveSettings(); } catch {}
     return { success: true, filePath: target };
   } catch (error) {
     return { success: false, error: error.message };
@@ -464,6 +494,7 @@ ipcMain.handle('open-portfolio', async () => {
     const filePath = filePaths[0];
     const data = await fs.readFile(filePath, 'utf8');
     currentPortfolioPath = filePath;
+    try { settings.lastPortfolioDir = path.dirname(filePath); saveSettings(); } catch {}
     return { success: true, data, filePath };
   } catch (error) {
     return { success: false, error: error.message };
@@ -475,6 +506,7 @@ ipcMain.handle('open-portfolio-at', async (_event, filePath) => {
     if (!filePath || !fsSync.existsSync(filePath)) return { success: false, error: 'File not found' };
     const data = await fs.readFile(filePath, 'utf8');
     currentPortfolioPath = filePath;
+    try { settings.lastPortfolioDir = path.dirname(filePath); saveSettings(); } catch {}
     return { success: true, data, filePath };
   } catch (error) {
     return { success: false, error: error.message };

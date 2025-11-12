@@ -11,11 +11,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createNewPortfolio: (jsonData) => ipcRenderer.invoke('create-new-portfolio', jsonData),
   openPortfolio: () => ipcRenderer.invoke('open-portfolio'),
   openPortfolioAt: (path) => ipcRenderer.invoke('open-portfolio-at', path),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   onMenuSave: (callback) => ipcRenderer.on('menu-save', () => callback()),
   onMenuOpen: (callback) => ipcRenderer.on('menu-open', () => callback()),
   onMenuNew: (callback) => ipcRenderer.on('menu-new', () => callback()),
   onMenuPreferences: (callback) => ipcRenderer.on('menu-preferences', () => callback()),
   onMenuExportPdf: (callback) => ipcRenderer.on('menu-export-pdf', () => callback()),
   setNativeTheme: (source) => ipcRenderer.invoke('set-native-theme', source),
-  savePdfDirect: (data, defaultPath) => ipcRenderer.invoke('save-pdf-direct', { data, defaultPath })
+  savePdfDirect: (data, defaultPath) => ipcRenderer.invoke('save-pdf-direct', { data, defaultPath }),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url)
 });

@@ -43,6 +43,88 @@ function openPreferences() {
   if (preferencesModal) preferencesModal.classList.add('show');
 }
 
+function openUserForm() {
+  const uim = document.getElementById('userInfoModal');
+  if (!uim) return;
+  setUserFormMode(true);
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  const src = userFormDraft || {
+    name: userInfo.name,
+    years: userInfo.years,
+    statement: userInfo.statement,
+    website: userInfo.website,
+    username: userInfo.username,
+    email: userInfo.email,
+    linksRaw: (Array.isArray(userInfo.additionalLinks) && userInfo.additionalLinks.length
+      ? userInfo.additionalLinks.map(l => (l && l.name ? `[${l.name}](${l.url})` : (l && l.url) || '')).filter(Boolean).join(', ')
+      : ''),
+    stylePreset: userInfo.themePreset
+  };
+  setVal('userName', src.name);
+  setVal('userYears', src.years);
+  setVal('userStatement', src.statement);
+  setVal('userWebsite', src.website);
+  setVal('userLinks', src.linksRaw || '');
+  setVal('userUsername', src.username);
+  setVal('userEmail', src.email);
+  syncStylePresetRadios(src.stylePreset || userInfo.themePreset);
+  uim.classList.add('show');
+  wireUserFormModalInteractions();
+}
+
+function setUserFormMode(isEdit) {
+  const uim = document.getElementById('userInfoModal');
+  if (!uim) return;
+  const titleEl = uim.querySelector('.modal-content h2');
+  const descEl = uim.querySelector('.modal-content p');
+  const styleFs = uim.querySelector('fieldset.form-style-preset');
+  if (isEdit) {
+    if (titleEl) titleEl.textContent = 'Edit Form';
+    if (descEl) descEl.textContent = 'Update your details. Changes apply when you Save & Continue.';
+    if (styleFs) styleFs.style.display = 'none';
+  } else {
+    if (titleEl) titleEl.textContent = 'Welcome to PDFolio';
+    if (descEl) descEl.textContent = 'Please provide your information to get started.';
+    if (styleFs) styleFs.style.display = '';
+  }
+}
+
+function readUserFormValues() {
+  const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const selectedPresetInput = document.querySelector('input[name="stylePreset"]:checked');
+  const stylePreset = (selectedPresetInput && selectedPresetInput.value) || userInfo.themePreset;
+  return {
+    name: getVal('userName'),
+    years: getVal('userYears'),
+    statement: getVal('userStatement'),
+    website: getVal('userWebsite'),
+    username: getVal('userUsername'),
+    email: getVal('userEmail'),
+    linksRaw: getVal('userLinks'),
+    stylePreset
+  };
+}
+
+function wireUserFormModalInteractions() {
+  if (userFormDraftWired) return;
+  userFormDraftWired = true;
+  const uim = document.getElementById('userInfoModal');
+  const form = document.getElementById('userInfoForm');
+  if (!uim || !form) return;
+  // Click outside (overlay) closes the modal, preserving draft
+  uim.addEventListener('click', (e) => {
+    if (e.target === uim) {
+      // persist draft from current form values
+      userFormDraft = readUserFormValues();
+      uim.classList.remove('show');
+    }
+  });
+  // Track changes to remember unsaved edits
+  const track = () => { userFormDraft = readUserFormValues(); };
+  form.addEventListener('input', track);
+  form.addEventListener('change', track);
+}
+
 if (window.electronAPI && window.electronAPI.onMenuPreferences) {
   window.electronAPI.onMenuPreferences(openPreferences);
 }
@@ -83,10 +165,17 @@ let userInfo = {
   instagram: '',
   username: '',
   email: '',
+  website: '',
+  websiteLabel: '',
+  additionalLinks: [], // {name, url}[]
   portfolioLabel: 'Portfolio',
   themePreset: 'default',
   theme: { ...THEME_PRESETS.default }
 };
+
+// Draft state for the user form (unsaved changes persist across modal open/close)
+let userFormDraft = null; // { name, years, statement, website, username, email, linksRaw, stylePreset }
+let userFormDraftWired = false;
 
 // Portfolio state
 let pages = [];
@@ -120,6 +209,20 @@ function applyUiTheme() {
   } catch {}
 }
 applyUiTheme();
+
+// Open all links in the system browser
+try {
+  document.addEventListener('click', (e) => {
+    const a = e.target && (e.target.closest ? e.target.closest('a') : null);
+    if (a && a.getAttribute) {
+      const href = a.getAttribute('href');
+      if (href && window.electronAPI && window.electronAPI.openExternal) {
+        e.preventDefault();
+        window.electronAPI.openExternal(href);
+      }
+    }
+  }, true);
+} catch {}
 
 // Follow system dark mode globally if no explicit user preference is set
 try {
@@ -188,6 +291,20 @@ async function loadUserInfo() {
     } catch {}
   }
 
+  function wireThemeModalInteractions() {
+    if (themeModalWired) return;
+    themeModalWired = true;
+    const modal = document.getElementById('themeModal');
+    if (!modal) return;
+    modal.addEventListener('click', (e) => {
+      const content = modal.querySelector('.modal-content');
+      if (!content) return;
+      if (!content.contains(e.target)) {
+        closeThemeModal();
+      }
+    });
+  }
+
   const hasRun = ls && ls.getItem('hasRun') === '1';
   if (!hasRun) {
     ensureThemeConsistency();
@@ -209,7 +326,7 @@ function wireFirstRunHandlers() {
   const openBtn = document.getElementById('openPortfolioBtn');
   if (createBtn) createBtn.onclick = async () => {
     try {
-      const initial = JSON.stringify({ userInfo, pages }, null, 2);
+      const initial = await getPortfolioPayload();
       const res = await (window.electronAPI && window.electronAPI.createNewPortfolio ? window.electronAPI.createNewPortfolio(initial) : Promise.resolve({ success: false }));
       if (res && res.success) {
         if (typeof localStorage !== 'undefined') {
@@ -219,7 +336,11 @@ function wireFirstRunHandlers() {
         const m = document.getElementById('firstRunModal');
         if (m) m.classList.remove('show');
         const uim = document.getElementById('userInfoModal');
-        if (uim) uim.classList.add('show');
+        if (uim) {
+          setUserFormMode(false);
+          uim.classList.add('show');
+          wireUserFormModalInteractions();
+        }
       }
     } catch {}
   };
@@ -265,17 +386,27 @@ document.getElementById('userInfoForm').addEventListener('submit', async (e) => 
     ? { ...presetDefaults }
     : { ...presetDefaults, ...(userInfo.theme || {}) };
 
+  const usernameVal = document.getElementById('userUsername').value;
+  const igUrl = getInstagramUrlFromUsername(usernameVal);
+  const websiteVal = normalizeUrl(document.getElementById('userWebsite').value);
+  const addlLinksVal = document.getElementById('userLinks').value;
+  const addlLinks = parseAdditionalLinks(addlLinksVal);
   userInfo = {
     name: document.getElementById('userName').value,
     years: document.getElementById('userYears').value,
     statement: document.getElementById('userStatement').value,
-    instagram: document.getElementById('userInstagram').value,
-    username: document.getElementById('userUsername').value,
+    instagram: igUrl,
+    username: usernameVal,
     email: document.getElementById('userEmail').value,
+    website: websiteVal,
+    websiteLabel: websiteVal ? getHostname(websiteVal) : '',
+    additionalLinks: addlLinks,
     portfolioLabel: userInfo.portfolioLabel || 'Portfolio',
     themePreset: selectedPreset,
     theme: mergedTheme
   };
+  // Clear draft on save (applied to live state)
+  userFormDraft = null;
   syncStylePresetRadios(selectedPreset);
   
   await saveUserInfo();
@@ -291,9 +422,9 @@ function buildCoverPage() {
   // Check if cover page already exists
   const coverIndex = pages.findIndex(p => p.type === 'cover');
   if (coverIndex >= 0) {
-    pages[coverIndex].data = { ...userInfo };
+    pages[coverIndex].data = { };
   } else {
-    pages.unshift({ type: 'cover', data: { ...userInfo }, image: null });
+    pages.unshift({ type: 'cover', data: { }, image: null });
   }
 }
 
@@ -322,21 +453,40 @@ function renderPages() {
 
     if (p.type === 'cover') {
       el.classList.add('cover');
+      const u = userInfo || {};
+      const igUrl = (u.instagram && u.instagram.trim()) ? u.instagram : getInstagramUrlFromUsername(u.username);
+      const websiteUrl = u.website || '';
+      const additional = Array.isArray(u.additionalLinks) ? u.additionalLinks : [];
       el.innerHTML = `
-        <div class="label editable portfolio-label">${escapeHtml(p.data.portfolioLabel || 'Portfolio')}</div>
-        <h1 class="editable name">${escapeHtml(p.data.name || 'Your Name')}</h1>
-        ${p.data.years ? `<h2 class="editable years">${escapeHtml(p.data.years)}</h2>` : ''}
-        ${p.data.statement ? `<div class="meta editable statement">${escapeHtml(p.data.statement)}</div>` : ''}
+        <div class="label editable portfolio-label">${escapeHtml(u.portfolioLabel || 'Portfolio')}</div>
+        <h1 class="editable name">${escapeHtml(u.name || 'Your Name')}</h1>
+        ${u.years ? `<h2 class="editable years">${escapeHtml(u.years)}</h2>` : ''}
+        ${u.statement ? `<div class="meta editable statement">${escapeHtml(u.statement)}</div>` : ''}
         <div class="links">
-          ${p.data.instagram || p.data.username ? `
+          ${websiteUrl ? `
           <div class="social">
-            ${p.data.instagram ? `<a class="icon" href="${escapeHtml(p.data.instagram)}" target="_blank" title="Instagram">
-              <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2ZM12 7a5 5 0 1 0 0 10a5 5 0 0 0 0-10Zm0 1.5a3.5 3.5 0 1 1 0 7a3.5 3.5 0 0 1 0-7Zm5.25-.25a1 1 0 1 1 0-2a1 1 0 0 1 0 2Z'/></svg>
-            </a>` : ''}
-            ${p.data.username ? `<div class="username editable"><a href="${escapeHtml(p.data.instagram || '#')}" target="_blank">${escapeHtml(p.data.username)}</a></div>` : ''}
+            <a class="icon" href="${escapeHtml(websiteUrl)}" target="_blank" title="Website">
+              <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>
+                <path d='M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm0 2a8 8 0 0 1 7.75 6H14.9a12.4 12.4 0 0 0-2.1-4.82A10.54 10.54 0 0 0 12 4Zm-2.9.68A12.4 12.4 0 0 0 7.4 10H4.25A8 8 0 0 1 9.1 4.68ZM4.25 14H7.4a12.4 12.4 0 0 0 1.7 5.32A8 8 0 0 1 4.25 14ZM12 20a10.54 10.54 0 0 1-.2-1.18A12.4 12.4 0 0 1 14.9 14h4.85A8 8 0 0 1 12 20Zm6.85-10H14.9a12.4 12.4 0 0 1-1.7-5.32A8 8 0 0 1 18.85 10ZM9.1 14H4.25A8 8 0 0 0 9.1 19.32A12.4 12.4 0 0 1 9.1 14Z'/>
+              </svg>
+            </a>
+            <div class="website editable"><a href="${escapeHtml(websiteUrl)}" target="_blank">${escapeHtml((u && u.websiteLabel) || getHostname(websiteUrl))}</a></div>
           </div>
           ` : ''}
-          ${p.data.email ? `<div style="margin-top:6px" class="editable email"><a href="mailto:${escapeHtml(p.data.email)}">${escapeHtml(p.data.email)}</a></div>` : ''}
+          ${igUrl || u.username ? `
+          <div class="social">
+            ${igUrl ? `<a class="icon" href="${escapeHtml(igUrl)}" target="_blank" title="Instagram">
+              <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2ZM12 7a5 5 0 1 0 0 10a5 5 0 0 0 0-10Zm0 1.5a3.5 3.5 0 1 1 0 7a3.5 3.5 0 0 1 0-7Zm5.25-.25a1 1 0 1 1 0-2a1 1 0 0 1 0 2Z'/></svg>
+            </a>` : ''}
+            ${u.username ? `<div class="username editable"><a href="${escapeHtml(igUrl || '#')}" target="_blank">${escapeHtml(u.username)}</a></div>` : ''}
+          </div>
+          ` : ''}
+          ${additional && additional.length ? `
+          <div class="additional-links editable">
+            ${additional.map(l => `<div><a href="${escapeHtml(l.url)}" target="_blank">${escapeHtml(l.name)}</a></div>`).join('')}
+          </div>
+          ` : ''}
+          ${u.email ? `<div style="margin-top:6px" class="editable email"><a href="mailto:${escapeHtml(u.email)}">${escapeHtml(u.email)}</a></div>` : ''}
         </div>
       `;
     } else if (p.type === 'single') {
@@ -409,7 +559,8 @@ function renderPagesList() {
     }
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.innerHTML = `<div style="font-weight:600">${escapeHtml(p.data.title || p.data.name || p.type)}</div><div class="small">${escapeHtml(p.type)} — page ${i + 1}</div>`;
+    const itemTitle = p.type === 'cover' ? (userInfo && userInfo.name ? userInfo.name : 'Cover') : (p.data.title || p.data.name || p.type);
+    meta.innerHTML = `<div style="font-weight:600">${escapeHtml(itemTitle)}</div><div class="small">${escapeHtml(p.type)} — page ${i + 1}</div>`;
     const reorder = document.createElement('div');
     reorder.className = 'reorder';
     const up = document.createElement('button');
@@ -433,6 +584,60 @@ function renderPagesList() {
     item.appendChild(reorder);
     list.appendChild(item);
   });
+
+  // Right-click context menu on links to Edit
+  const onContext = (e) => {
+    const a = e.target && (e.target.closest ? e.target.closest('a') : null);
+    if (!a) return;
+    e.preventDefault();
+    // Remove any existing menu
+    document.querySelectorAll('.context-menu').forEach(m => m.remove());
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    const btn = document.createElement('button');
+    btn.textContent = 'Edit';
+    btn.onclick = () => {
+      menu.remove();
+      const editableContainer = a.closest('.editable') || a.parentElement;
+      if (editableContainer) {
+        try {
+          if (editableContainer.classList.contains('website')) {
+            const link = editableContainer.querySelector('a');
+            if (link) {
+              editableContainer.textContent = `[${link.textContent}](${link.getAttribute('href') || ''})`;
+            }
+          } else if (editableContainer.classList.contains('additional-links')) {
+            const links = Array.from(editableContainer.querySelectorAll('a'));
+            const lines = links.map(l => `[${l.textContent}](${l.getAttribute('href') || ''})`).join('\n');
+            editableContainer.textContent = lines;
+          }
+        } catch {}
+        editableContainer.setAttribute('contenteditable', 'true');
+        editableContainer.focus();
+        // Place caret at end
+        try {
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(editableContainer);
+          range.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch {}
+      }
+    };
+    menu.appendChild(btn);
+    document.body.appendChild(menu);
+    const x = e.clientX, y = e.clientY;
+    menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 8) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 8) + 'px';
+    const close = () => { menu.remove(); document.removeEventListener('click', close, true); };
+    setTimeout(() => document.addEventListener('click', close, true), 0);
+  };
+  const canvasEl = document.getElementById('canvas');
+  if (canvasEl && canvasEl.dataset && canvasEl.dataset.cmBound !== '1') {
+    canvasEl.addEventListener('contextmenu', onContext);
+    canvasEl.dataset.cmBound = '1';
+  }
 }
 
 function updateStyleTargetLabel() {
@@ -461,6 +666,19 @@ function attachPageInteractions() {
   document.querySelectorAll('#canvas .editable').forEach(el => {
     el.ondblclick = (e) => {
       e.stopPropagation();
+      try {
+        if (el.classList.contains('website')) {
+          const link = el.querySelector('a');
+          if (link) {
+            el.textContent = `[${link.textContent}](${link.getAttribute('href') || ''})`;
+          }
+        } else if (el.classList.contains('additional-links')) {
+          const links = Array.from(el.querySelectorAll('a'));
+          if (links.length) {
+            el.textContent = links.map(l => `[${l.textContent}](${l.getAttribute('href') || ''})`).join('\n');
+          }
+        }
+      } catch {}
       el.setAttribute('contenteditable', 'true');
       el.focus();
     };
@@ -471,41 +689,149 @@ function attachPageInteractions() {
       const idx = parseInt(pageEl.dataset.index, 10);
       if (isNaN(idx)) return;
       const p = pages[idx];
+      const isCover = p && p.type === 'cover';
       if (el.classList.contains('name')) {
-        p.data.name = el.innerText.trim();
-        userInfo.name = p.data.name;
-        saveUserInfo();
+        const v = el.innerText.trim();
+        if (isCover) {
+          userInfo.name = v;
+          saveUserInfo();
+          renderPagesList();
+          markDirty();
+          return;
+        } else {
+          p.data.name = v;
+          saveUserInfo();
+        }
       }
       if (el.classList.contains('years')) {
-        p.data.years = el.innerText.trim();
-        userInfo.years = p.data.years;
-        saveUserInfo();
+        const v = el.innerText.trim();
+        if (isCover) {
+          userInfo.years = v;
+          saveUserInfo();
+          renderPagesList();
+          markDirty();
+          return;
+        } else {
+          p.data.years = v;
+          saveUserInfo();
+        }
       }
       if (el.classList.contains('statement')) {
-        p.data.statement = el.innerText.trim();
-        userInfo.statement = p.data.statement;
-        saveUserInfo();
+        const v = el.innerText.trim();
+        if (isCover) {
+          userInfo.statement = v;
+          saveUserInfo();
+          markDirty();
+          return;
+        } else {
+          p.data.statement = v;
+          saveUserInfo();
+        }
+      }
+      if (el.classList.contains('website')) {
+        const raw = el.innerText.trim();
+        let url = '';
+        let label = '';
+        const m = raw.match(/^\s*\[([^\]]+)\]\(([^)]+)\)\s*$/);
+        if (m) {
+          label = m[1].trim();
+          url = normalizeUrl(m[2].trim());
+        } else {
+          url = normalizeUrl(raw);
+          label = url ? getHostname(url) : '';
+        }
+        if (isCover) {
+          userInfo.website = url;
+          userInfo.websiteLabel = label;
+          saveUserInfo();
+          renderPages();
+          markDirty();
+          return;
+        } else {
+          p.data.website = url;
+          p.data.websiteLabel = label;
+          saveUserInfo();
+          renderPages();
+          markDirty();
+          return;
+        }
       }
       if (el.classList.contains('username')) {
-        p.data.username = el.innerText.trim();
-        userInfo.username = p.data.username;
-        saveUserInfo();
-      }
-      if (el.classList.contains('email')) {
-        p.data.email = el.innerText.trim();
-        userInfo.email = p.data.email;
+        const v = el.innerText.trim();
+        if (isCover) {
+          userInfo.username = v;
+          const igUrl = getInstagramUrlFromUsername(v);
+          userInfo.instagram = igUrl;
+        } else {
+          p.data.username = v;
+          userInfo.username = v;
+          const igUrl = getInstagramUrlFromUsername(v);
+          p.data.instagram = igUrl;
+          userInfo.instagram = igUrl;
+        }
         const a = el.querySelector('a');
         if (a) {
-          a.href = 'mailto:' + p.data.email;
-          a.textContent = p.data.email;
+          const igUrlNow = getInstagramUrlFromUsername(isCover ? userInfo.username : p.data.username);
+          a.href = igUrlNow || '#';
+        }
+        const social = el.closest('.social');
+        if (social) {
+          const iconLink = social.querySelector('a.icon');
+          if (iconLink) {
+            const igUrlNow = getInstagramUrlFromUsername(isCover ? userInfo.username : p.data.username);
+            if (igUrlNow) {
+              iconLink.href = igUrlNow;
+              iconLink.style.display = '';
+            } else {
+              iconLink.removeAttribute('href');
+              iconLink.style.display = 'none';
+            }
+          }
+        }
+        saveUserInfo();
+      }
+      if (el.classList.contains('additional-links')) {
+        const raw = el.innerText.replace(/\r/g, '');
+        const links = parseAdditionalLinks(raw);
+        if (isCover) {
+          userInfo.additionalLinks = links;
+        } else {
+          p.data.additionalLinks = links;
+          userInfo.additionalLinks = links;
+        }
+        saveUserInfo();
+        renderPages();
+        markDirty();
+        return;
+      }
+      if (el.classList.contains('email')) {
+        const v = el.innerText.trim();
+        if (isCover) {
+          userInfo.email = v;
+        } else {
+          p.data.email = v;
+          userInfo.email = v;
+        }
+        const a = el.querySelector('a');
+        if (a) {
+          const emailNow = isCover ? userInfo.email : p.data.email;
+          a.href = 'mailto:' + emailNow;
+          a.textContent = emailNow;
         }
         saveUserInfo();
       }
       if (el.classList.contains('portfolio-label')) {
         const newLabel = el.innerText.trim();
-        p.data.portfolioLabel = newLabel;
-        userInfo.portfolioLabel = newLabel;
-        saveUserInfo();
+        if (isCover) {
+          userInfo.portfolioLabel = newLabel;
+          saveUserInfo();
+          markDirty();
+          return;
+        } else {
+          p.data.portfolioLabel = newLabel;
+          userInfo.portfolioLabel = newLabel;
+          saveUserInfo();
+        }
       }
       if (el.classList.contains('title')) p.data.title = el.innerText.trim();
       if (el.classList.contains('year')) p.data.year = el.innerText.trim();
@@ -718,6 +1044,74 @@ function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Build an Instagram profile URL from a username-like input.
+// Accepts raw usernames, @user, or full URLs and normalizes to https://www.instagram.com/username
+function getInstagramUrlFromUsername(value) {
+  if (!value) return '';
+  let v = String(value).trim();
+  if (!v) return '';
+  // If a full URL was pasted, try to extract the path segment
+  try {
+    if (/^https?:\/\//i.test(v)) {
+      const u = new URL(v);
+      v = (u.pathname || '').replace(/^\/+/, '').split('/')[0] || '';
+    }
+  } catch {}
+  // Strip common prefixes
+  v = v.replace(/^@+/, '').replace(/^instagram\.com\//i, '').replace(/^www\.instagram\.com\//i, '').replace(/^\/+/, '');
+  // Keep only typical username characters
+  v = v.replace(/[^a-zA-Z0-9._]/g, '');
+  if (!v) return '';
+  return 'https://www.instagram.com/' + encodeURIComponent(v);
+}
+
+// Normalize general URLs; if missing scheme, assume https
+function normalizeUrl(url) {
+  if (!url) return '';
+  let v = String(url).trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) v = 'https://' + v.replace(/^\/+/, '');
+  try {
+    const u = new URL(v);
+    return u.href;
+  } catch {
+    return '';
+  }
+}
+
+// Extract hostname for display
+function getHostname(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+// Parse comma-separated [Name](url) entries into {name, url}[] and normalize urls
+function parseAdditionalLinks(input) {
+  if (!input) return [];
+  const items = String(input).split(/\n|,/).map(s => s.trim()).filter(Boolean);
+  const out = [];
+  for (const item of items) {
+    const m = item.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (m) {
+      const name = m[1].trim();
+      const url = normalizeUrl(m[2].trim());
+      if (name && url) out.push({ name, url });
+      continue;
+    }
+    // Fallback: plain URL, use hostname as name
+    const url = normalizeUrl(item);
+    if (url) {
+      try { const u = new URL(url); out.push({ name: u.hostname, url }); } catch {}
+    }
+  }
+  return out;
+}
+
 // --- THEME / COLOR SETTINGS ---
 function normalizePresetKey(preset) {
   const key = (preset && preset.trim()) || 'default';
@@ -773,6 +1167,9 @@ function applyThemeFromUserInfo() {
 let themeTarget = 'paper'; // 'paper' | 'text' | 'muted'
 let workingTheme = null; // temporary edits while the modal is open
 let workingPreset = null; // temporary preset while modal is open
+let themeModalWired = false;
+let themeClickAwayHandler = null;
+let themeKeyHandler = null;
 
 function getActivePreset() {
   return normalizePresetKey(workingPreset || userInfo.themePreset);
@@ -798,6 +1195,29 @@ function openThemeModal() {
   const modal = document.getElementById('themeModal');
   if (!modal) return;
   modal.classList.add('show');
+  wireThemeModalInteractions();
+  // Attach global click-away and ESC handlers
+  if (!themeClickAwayHandler) {
+    themeClickAwayHandler = (e) => {
+      const m = document.getElementById('themeModal');
+      if (!m || !m.classList.contains('show')) return;
+      const content = m.querySelector('.modal-content');
+      if (content && !content.contains(e.target)) {
+        closeThemeModal();
+      }
+    };
+    document.addEventListener('mousedown', themeClickAwayHandler, true);
+    document.addEventListener('touchstart', themeClickAwayHandler, true);
+    document.addEventListener('click', themeClickAwayHandler, true);
+  }
+  if (!themeKeyHandler) {
+    themeKeyHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeThemeModal();
+      }
+    };
+    document.addEventListener('keydown', themeKeyHandler, true);
+  }
   // snapshot current theme to workingTheme
   workingPreset = userInfo.themePreset;
   const activePreset = getActivePreset();
@@ -856,6 +1276,16 @@ function closeThemeModal() {
   applyThemeFromUserInfo();
   workingTheme = null;
   workingPreset = null;
+  if (themeClickAwayHandler) {
+    document.removeEventListener('mousedown', themeClickAwayHandler, true);
+    document.removeEventListener('touchstart', themeClickAwayHandler, true);
+    document.removeEventListener('click', themeClickAwayHandler, true);
+    themeClickAwayHandler = null;
+  }
+  if (themeKeyHandler) {
+    document.removeEventListener('keydown', themeKeyHandler, true);
+    themeKeyHandler = null;
+  }
 }
 
 function normalizeToHex(value) {
@@ -879,6 +1309,12 @@ if (themeBtn) {
     themeTarget = 'paper';
     openThemeModal();
   });
+}
+
+// Edit Form button
+const editFormBtn = document.getElementById('editFormBtn');
+if (editFormBtn) {
+  editFormBtn.addEventListener('click', openUserForm);
 }
 
 const choosePageColor = document.getElementById('choosePageColor');
@@ -936,9 +1372,24 @@ function updateThemeButtonsActive() {
     if (btn === map[themeTarget]) {
       btn.classList.add('active');
       btn.setAttribute('aria-pressed', 'true');
+      // Fallback: ensure readable contrast in dark UI
+      const isDarkUi = document.body && document.body.getAttribute('data-ui-theme') === 'dark';
+      if (isDarkUi) {
+        btn.style.backgroundColor = '#fff';
+        btn.style.color = '#111';
+        btn.style.borderColor = '#555';
+      } else {
+        btn.style.backgroundColor = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }
     } else {
       btn.classList.remove('active');
       btn.setAttribute('aria-pressed', 'false');
+      // Reset any inline styles
+      btn.style.backgroundColor = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
     }
   });
 }
@@ -1147,14 +1598,22 @@ async function exportPortfolioAsPDF() {
 document.getElementById('printBtn').addEventListener('click', exportPortfolioAsPDF);
 
 // Quick Save button and menu handlers
-function getPortfolioPayload() {
-  return JSON.stringify({ userInfo, pages }, null, 2);
+async function getPortfolioPayload() {
+  let version = 'unknown';
+  try {
+    if (window.electronAPI && window.electronAPI.getAppVersion) {
+      const res = await window.electronAPI.getAppVersion();
+      if (res && res.success && res.version) version = res.version;
+    }
+  } catch {}
+  return JSON.stringify({ appVersion: version, userInfo, pages }, null, 2);
 }
 
 async function saveCurrentPortfolio() {
   if (!window.electronAPI || !window.electronAPI.savePortfolio) return;
   try {
-    const res = await window.electronAPI.savePortfolio(getPortfolioPayload());
+    const payload = await getPortfolioPayload();
+    const res = await window.electronAPI.savePortfolio(payload);
     if (res && res.success) {
       clearDirty();
       if (typeof localStorage !== 'undefined' && res.filePath) {
@@ -1322,7 +1781,8 @@ if (window.electronAPI && window.electronAPI.onResetPortfolio) {
 if (window.electronAPI && window.electronAPI.onRequestSaveBeforeExit && window.electronAPI.respondSaveBeforeExit) {
   window.electronAPI.onRequestSaveBeforeExit(async () => {
     try {
-      const result = await window.electronAPI.savePortfolio(getPortfolioPayload());
+      const payload = await getPortfolioPayload();
+      const result = await window.electronAPI.savePortfolio(payload);
       if (result && result.success) {
         clearDirty();
         if (typeof localStorage !== 'undefined' && result.filePath) {
