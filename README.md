@@ -94,11 +94,7 @@ After the build process is complete, you will find the installer and application
 
 - Export as PDF: Ctrl/Cmd+Shift+E
 - Save: Ctrl/Cmd+S
-- Preferences: Ctrl/Cmd+,
-
-## License
-
-MIT
+- Preferences: Ctrl/Cmd+l
 
 
 
