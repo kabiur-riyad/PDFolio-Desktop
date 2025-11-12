@@ -26,7 +26,7 @@ A minimalist desktop application for creating beautiful, print-ready photography
 
 The easiest way to get started is to download the latest pre-compiled version for your operating system.
 
-1.  Go to the [**Releases Page**](https://github.com/kabiur-riyad/PDFolio/releases) on GitHub.
+1.  Go to the [**Releases Page**](https://github.com/kabiur-riyad/PDFolio-Desktop/releases) on GitHub.
 2.  Under the latest release, find the executable for your system (e.g., `PDFolio-vx.x.x.exe` for Windows).
 3.  Download and run.
 
@@ -96,6 +96,7 @@ You can package the application into a distributable format to share with others
     ```
 
 After the build process is complete, you will find the installer and application files in the `dist` directory.
+
 
 
 
