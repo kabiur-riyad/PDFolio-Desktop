@@ -3,6 +3,21 @@ body{font-family:'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helve
 
 /* UI Dark Mode */
 body[data-ui-theme="dark"]{--bg:#121212;--paper:#1a1a1a;--text:#f5f5f5;--muted:#a0a0a0;--accent:#fff}
+/* UI Cozy Theme */
+body[data-ui-theme="cozy"]{--bg:#faf6f1;--paper:#fffaf4;--text:#2b2016;--muted:#8a7b6c;--accent:#8b5e34}
+body[data-ui-theme="cozy"] #controls{border-right:1px solid #efe5dc}
+body[data-ui-theme="cozy"] .style-preset-bar,
+body[data-ui-theme="cozy"] .style-section,
+body[data-ui-theme="cozy"] .instructions,
+body[data-ui-theme="cozy"] .page-item{background:#f9f3ee;border-color:#efe5dc}
+body[data-ui-theme="cozy"] .thumb{background:#f2ece6}
+body[data-ui-theme="cozy"] .dropzone{background:#fffdf9;border-color:#f0e6dc}
+body[data-ui-theme="cozy"] .btn{background:#8b5e34;color:#fff}
+body[data-ui-theme="cozy"] .btn:hover{background:#6f4a28}
+body[data-ui-theme="cozy"] .btn.secondary{background:transparent;color:var(--text);border:1px solid #eadfd4}
+body[data-ui-theme="cozy"] .btn.secondary:hover{background:#f3eee9}
+body[data-ui-theme="cozy"] .style-select{background:#fff;border-color:#eadfd4;color:var(--text)}
+body[data-ui-theme="cozy"] .modal-content{background:#fffaf4;color:var(--text)}
 body[data-ui-theme="dark"] #controls{border-right:1px solid #2a2a2a}
 body[data-ui-theme="dark"] .style-preset-bar,
 body[data-ui-theme="dark"] .style-section,

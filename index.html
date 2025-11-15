@@ -65,7 +65,13 @@
   <div id="preferencesModal" class="modal">
     <div class="modal-content">
       <h2>Preferences</h2>
-      <label><input type="checkbox" id="prefUiDark"> Enable Dark Mode</label>
+      <label for="prefUiTheme">UI Theme</label>
+      <select id="prefUiTheme" class="style-select" aria-label="Select UI theme">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+        <option value="cozy">Cozy</option>
+        <option value="system">System</option>
+      </select>
       <label><input type="checkbox" id="prefAutosave"> Enable Autosave</label>
       <div class="buttons">
         <button type="button" id="cancelPrefsBtn" class="btn secondary">Cancel</button>
@@ -79,6 +85,13 @@
   <div class="modal-content">
     <h2>Get started</h2>
     <p class="small" style="margin-bottom:16px;color:var(--muted)">Create a new portfolio or open an existing one.</p>
+    <label for="firstRunUiTheme">UI Theme</label>
+    <select id="firstRunUiTheme" class="style-select" aria-label="Select UI theme on first run">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="cozy">Cozy</option>
+      <option value="system">System</option>
+    </select>
     <div class="buttons" style="display:flex;gap:8px;justify-content:flex-end">
       <button type="button" id="openPortfolioBtn" class="btn secondary">Open…</button>
       <button type="button" id="createPortfolioBtn" class="btn">Create New</button>

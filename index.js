@@ -32,13 +32,13 @@ const THEME_PRESETS = {
 
 // Preferences modal wiring
 const preferencesModal = document.getElementById('preferencesModal');
-const prefUiDarkEl = document.getElementById('prefUiDark');
+const prefUiThemeEl = document.getElementById('prefUiTheme');
 const prefAutosaveEl = document.getElementById('prefAutosave');
 const cancelPrefsBtn = document.getElementById('cancelPrefsBtn');
 const savePrefsBtn = document.getElementById('savePrefsBtn');
 
 function openPreferences() {
-  if (prefUiDarkEl) prefUiDarkEl.checked = !!uiSettings.uiDark;
+  if (prefUiThemeEl) prefUiThemeEl.value = uiSettings.uiThemeMode || 'system';
   if (prefAutosaveEl) prefAutosaveEl.checked = !!uiSettings.autosave;
   if (preferencesModal) preferencesModal.classList.add('show');
 }
@@ -134,12 +134,19 @@ if (cancelPrefsBtn) cancelPrefsBtn.addEventListener('click', () => {
 });
 
 if (savePrefsBtn) savePrefsBtn.addEventListener('click', () => {
-  const nextUiDark = !!(prefUiDarkEl && prefUiDarkEl.checked);
   const nextAutosave = !!(prefAutosaveEl && prefAutosaveEl.checked);
-  uiSettings.uiDark = nextUiDark;
+  const selectedMode = prefUiThemeEl ? prefUiThemeEl.value : 'system';
+  uiSettings.uiThemeMode = selectedMode;
+  if (selectedMode === 'dark') uiSettings.uiDark = true;
+  else if (selectedMode === 'light' || selectedMode === 'cozy') uiSettings.uiDark = false;
+  else {
+    try { uiSettings.uiDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch { uiSettings.uiDark = false; }
+  }
   uiSettings.autosave = nextAutosave;
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('uiDark', uiSettings.uiDark ? '1' : '0');
+    localStorage.setItem('uiTheme', selectedMode);
+    if (selectedMode === 'system') localStorage.removeItem('uiDark');
+    else localStorage.setItem('uiDark', uiSettings.uiDark ? '1' : '0');
     localStorage.setItem('autosave', uiSettings.autosave ? '1' : '0');
   }
   applyUiTheme();
@@ -182,14 +189,22 @@ let pages = [];
 
 let isDirty = false;
 
-// UI settings: dark mode and autosave
+// UI settings: theme mode, dark flag and autosave
 const uiSettings = (() => {
   const ls = (typeof localStorage !== 'undefined') ? localStorage : null;
   const uiDarkPref = ls ? ls.getItem('uiDark') : null; // '1' | '0' | null
+  const uiThemePref = ls ? ls.getItem('uiTheme') : null; // 'light' | 'dark' | 'cozy' | 'system' | null
   const autosavePref = ls ? ls.getItem('autosave') : null;
   const systemDark = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
+  const validTheme = (v) => v === 'light' || v === 'dark' || v === 'cozy' || v === 'system';
+  const themeMode = validTheme(uiThemePref) ? uiThemePref : 'system';
+  const explicitDark = uiDarkPref !== null ? (uiDarkPref === '1') : null;
+  const effectiveDark = themeMode === 'dark' ? true
+    : (themeMode === 'light' || themeMode === 'cozy') ? false
+    : (explicitDark !== null ? explicitDark : systemDark);
   return {
-    uiDark: uiDarkPref === '1' ? true : uiDarkPref === '0' ? false : systemDark,
+    uiThemeMode: themeMode,
+    uiDark: effectiveDark,
     autosave: autosavePref === '1'
   };
 })();
@@ -197,13 +212,22 @@ const uiSettings = (() => {
 function applyUiTheme() {
   try {
     if (document.body) {
-      document.body.setAttribute('data-ui-theme', uiSettings.uiDark ? 'dark' : 'light');
+      let themeName = 'light';
+      if (uiSettings.uiThemeMode === 'cozy') themeName = 'cozy';
+      else if (uiSettings.uiThemeMode === 'dark') themeName = 'dark';
+      else if (uiSettings.uiThemeMode === 'light') themeName = 'light';
+      else themeName = uiSettings.uiDark ? 'dark' : 'light'; // system
+      document.body.setAttribute('data-ui-theme', themeName);
     }
     if (window.electronAPI && window.electronAPI.setNativeTheme) {
       // Keep system unless explicitly set; dialogs follow themeSource
-      const source = (typeof localStorage !== 'undefined' && localStorage.getItem('uiDark') !== null)
-        ? (uiSettings.uiDark ? 'dark' : 'light')
-        : 'system';
+      let source = 'system';
+      try {
+        const t = (typeof localStorage !== 'undefined') ? localStorage.getItem('uiTheme') : null;
+        if (t === 'dark') source = 'dark';
+        else if (t === 'light' || t === 'cozy') source = 'light';
+        else source = 'system';
+      } catch {}
       window.electronAPI.setNativeTheme(source);
     }
   } catch {}
@@ -224,14 +248,18 @@ try {
   }, true);
 } catch {}
 
-// Follow system dark mode globally if no explicit user preference is set
+// Follow system dark mode globally only when UI theme is set to 'system' and no explicit uiDark is stored
 try {
   const media = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
   const onSchemeChange = (e) => {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('uiDark') === null) {
-      uiSettings.uiDark = !!e.matches;
-      applyUiTheme();
+    if (typeof localStorage !== 'undefined') {
+      const t = localStorage.getItem('uiTheme');
+      const hasExplicitDark = localStorage.getItem('uiDark') !== null;
+      const shouldFollow = (t === 'system') || (!t && !hasExplicitDark);
+      if (!shouldFollow) return;
     }
+    uiSettings.uiDark = !!e.matches;
+    applyUiTheme();
   };
   if (media) {
     if (typeof media.addEventListener === 'function') media.addEventListener('change', onSchemeChange);
@@ -324,6 +352,30 @@ async function loadUserInfo() {
 function wireFirstRunHandlers() {
   const createBtn = document.getElementById('createPortfolioBtn');
   const openBtn = document.getElementById('openPortfolioBtn');
+  const frThemeSelect = document.getElementById('firstRunUiTheme');
+  if (frThemeSelect && frThemeSelect.dataset.wired !== '1') {
+    frThemeSelect.dataset.wired = '1';
+    try { frThemeSelect.value = uiSettings.uiThemeMode || 'system'; } catch {}
+    const applyMode = (mode) => {
+      uiSettings.uiThemeMode = mode;
+      if (mode === 'dark') uiSettings.uiDark = true;
+      else if (mode === 'light' || mode === 'cozy') uiSettings.uiDark = false;
+      else {
+        try { uiSettings.uiDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch { uiSettings.uiDark = false; }
+      }
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('uiTheme', mode);
+          if (mode === 'system') localStorage.removeItem('uiDark');
+          else localStorage.setItem('uiDark', uiSettings.uiDark ? '1' : '0');
+        }
+      } catch {}
+      applyUiTheme();
+    };
+    frThemeSelect.addEventListener('change', () => applyMode(frThemeSelect.value));
+    // Ensure the current selection is applied visually
+    applyMode(frThemeSelect.value);
+  }
   if (createBtn) createBtn.onclick = async () => {
     try {
       const initial = await getPortfolioPayload();
